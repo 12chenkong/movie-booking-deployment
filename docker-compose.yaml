@@ -1,0 +1,80 @@
+services:
+  kafka-saga-pattern:
+    image: confluentinc/cp-kafka:7.8.0
+    container_name: kafka-saga-pattern
+    ports:
+      - "29092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-saga-pattern:9091'
+      KAFKA_LISTENERS: 'PLAINTEXT://:9090,CONTROLLER://kafka-saga-pattern:9091,EXTERNAL://:9092'
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-saga-pattern:9090,EXTERNAL://localhost:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      CLUSTER_ID: '4L6g3nShT-eMCtK--X86sw'
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+    volumes:
+        - kafka_saga_pattern_vol:/var/lib/kafka/data
+    networks:
+      - saga-net   
+
+  booking-service-db:
+    image: postgres:17.5-bullseye
+    container_name: booking-service-db
+    environment:
+      POSTGRES_USER: itpusr
+      POSTGRES_PASSWORD: itp@168
+      DATABASE_NAME: bookingdb
+    ports:
+      - "5168:5432"
+    volumes:
+      - ./init_scripts/postgres_init.sql:/docker-entrypoint-initdb.d/postgres_init.sql
+      - booking-service-postgres-vol:/var/lib/postgresql/data
+    networks:
+      - saga-net
+
+  seat-service-db:
+    image: postgres:17.5-bullseye
+    container_name: seat-service-db
+    environment:
+      POSTGRES_USER: itpusr
+      POSTGRES_PASSWORD: itp@168
+      DATABASE_NAME: seatdb
+    ports:
+      - "6168:5432"
+    volumes:
+      - ./init_scripts/seat_postgres_init.sql:/docker-entrypoint-initdb.d/seat_postgres_init.sql
+      - seat-service-postgres-vol:/var/lib/postgresql/data
+    networks:
+      - saga-net    
+
+  payment-service-db:
+    image: postgres:17.5-bullseye
+    container_name: payment-service-db
+    environment:
+      POSTGRES_USER: itpusr
+      POSTGRES_PASSWORD: itp@168
+      DATABASE_NAME: paymentdb
+    ports:
+      - "7168:5432"
+    volumes:
+      - ./init_scripts/payment_postgres_init.sql:/docker-entrypoint-initdb.d/payment_postgres_init.sql
+      - payment-service-postgres-vol:/var/lib/postgresql/data
+    networks:
+      - saga-net    
+
+
+volumes:
+  kafka_saga_pattern_vol:
+  booking-service-postgres-vol:
+  seat-service-postgres-vol:
+  payment-service-postgres-vol:
+     
+networks:
+  saga-net:
+    external: true     
+      
