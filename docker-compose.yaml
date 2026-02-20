@@ -1,24 +1,36 @@
 services:
-  kafka-saga-pattern:
-    image: confluentinc/cp-kafka:7.8.0
-    container_name: kafka-saga-pattern
+  kafka-mb:
+    image: apache/kafka:4.1.1
+    container_name: kafka-kraft
     ports:
-      - "29092:9092"
+      - "29092:29092"  # external
+      - "29093:29093"  # controller
     environment:
       KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: 'broker,controller'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT'
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-saga-pattern:9091'
-      KAFKA_LISTENERS: 'PLAINTEXT://:9090,CONTROLLER://kafka-saga-pattern:9091,EXTERNAL://:9092'
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-saga-pattern:9090,EXTERNAL://localhost:29092
-      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
-      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      CLUSTER_ID: '4L6g3nShT-eMCtK--X86sw'
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+
+      # INTERNAL + EXTERNAL
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-kraft:9092,EXTERNAL://localhost:29092
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:29093
+
+      KAFKA_CLUSTER_ID: QYr03I4hQuuQf4q5OgS1Fg
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
     volumes:
-        - kafka_saga_pattern_vol:/var/lib/kafka/data
+       - kafka_data:/var/lib/kafka/data
+
+
     networks:
       - saga-net   
 
@@ -30,7 +42,7 @@ services:
       POSTGRES_PASSWORD: itp@168
       DATABASE_NAME: bookingdb
     ports:
-      - "5168:5432"
+      - "5432:5432"
     volumes:
       - ./init_scripts/postgres_init.sql:/docker-entrypoint-initdb.d/postgres_init.sql
       - booking-service-postgres-vol:/var/lib/postgresql/data
@@ -69,10 +81,10 @@ services:
 
 
 volumes:
-  kafka_saga_pattern_vol:
   booking-service-postgres-vol:
   seat-service-postgres-vol:
   payment-service-postgres-vol:
+  kafka_data:
      
 networks:
   saga-net:
